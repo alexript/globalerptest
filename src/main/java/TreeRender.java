@@ -190,10 +190,18 @@ public class TreeRender {
         try (FileWriter out = new FileWriter(outputFile)) {
 
             int level = 0;
-            outNode(out, rootNode, level);
+            outNode(out, rootNode, "", 0, rootNode.size(), false);
         } catch (IOException ex) {
             throw new TreeRenderException("Output file error", ex);
         }
+    }
+
+    private String extendString(int d, String ch) {
+        StringBuilder sb = new StringBuilder();
+        for (int i = 0; i < d; i++) {
+            sb.append(ch);
+        }
+        return sb.toString();
     }
 
     /**
@@ -203,16 +211,30 @@ public class TreeRender {
      * @param current current node
      * @param level tree level
      */
-    private void outNode(FileWriter out, Node<Integer> current, int level) throws IOException {
+    private void outNode(FileWriter out, Node<Integer> current, String prefix, int lenCorr, int chsize, boolean last) throws IOException {
         Integer value = current.getValue();
         if (value != null) {
-            final String line = String.format("%s---+\n", value.toString());
-            System.out.print(line);
+
+            final String val = value.toString();
+            int vallen = val.length();
+            String suffix = current.size() > 0 ? extendString(lenCorr - vallen, "-") + "---+" : "";
+
+            final String line = String.format("%s%s%s\n", prefix, val, suffix);
+        //    System.out.print(line);
             out.write(line);
         }
+        int maxLen = 0;
         for (Node<Integer> n : current) {
-            int l = level + 1;
-            outNode(out, n, l);
+            String val = n.toString();
+            maxLen = Math.max(maxLen, val.length());
+        }
+
+        int currSize = current.size();
+        int i = 0;
+        for (Node<Integer> n : current) {
+
+            outNode(out, n, prefix + (value == null ? "" : (chsize > 1 && !last ? "|   " : "    ")) + extendString(lenCorr - 1, " "), maxLen, currSize, i>=currSize-1);
+            i++;
         }
     }
 
