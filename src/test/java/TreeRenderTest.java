@@ -34,6 +34,16 @@ import org.junit.jupiter.api.Test;
 public class TreeRenderTest {
 
     @Test
+    public void testMainUseCase() {
+        try {
+            TreeRender r = new TreeRender(new String[]{"input.txt", "output.txt"});
+            r.render();
+        } catch (TreeRender.TreeRenderException ex) {
+            fail(ex);
+        }
+    }
+
+    @Test
     @Disabled
     public void testNullArgs() {
         AssertionError expectedAssertion = Assertions.assertThrows(AssertionError.class,
@@ -45,7 +55,7 @@ public class TreeRenderTest {
         );
 
         try {
-            new TreeRender(new String[]{"",""});
+            new TreeRender(new String[]{"", ""});
         } catch (Throwable t) {
             fail("No exception expecteed", t);
         }

@@ -23,6 +23,12 @@
  */
 
 import java.io.File;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.io.StringReader;
+import java.nio.file.Files;
+import java.util.LinkedList;
+import java.util.List;
 
 /**
  *
@@ -70,19 +76,154 @@ public class TreeRender {
         }
     }
 
-    /**
-     * Read data from input file and build tree
-     */
-    private void readInput() {
+    private static class Node<T> extends LinkedList<Node<T>> {
+
+        public T value;
+
+        public Node(T value) {
+            super();
+            this.value = value;
+        }
+
+        public T getValue() {
+            return value;
+        }
+
+        @Override
+        public String toString() {
+            return value.toString();
+        }
 
     }
 
     /**
-     * REnder input file data into aoutput file as pseudographical reprsentation
+     * Recursive parser of input data
+     *
+     * @param node current parent node
+     * @param r StringReader
+     * @throws IOException on string read error
      */
-    public void render() {
-        readInput();
+    private void parse(Node<Integer> node, StringReader r) throws IOException {
+        if (node == null) {
+            return;
+        }
+        int ch;
+        StringBuilder sb = null;
+        Node<Integer> currentNode = null;
+        while (-1 != (ch = r.read())) {
+            if (ch == '(') {
+                if (sb != null) {
+                    final String str = sb.toString();
+                    if (!str.isBlank()) {
+                        Integer i = Integer.parseInt(str);
+                        currentNode = new Node<>(i);
+                        node.add(currentNode);
+                    }
+                    sb = new StringBuilder();
+                }
+                parse(currentNode, r);
+            } else if (ch == ')') { // end of branch
+                if (sb != null) {
+                    final String str = sb.toString();
+                    if (!str.isBlank()) {
+                        Integer i = Integer.parseInt(str);
+                        Node<Integer> n = new Node<>(i);
+                        node.add(n);
+                    }
+                    sb = new StringBuilder();
+                }
 
+                return;
+            } else if (Character.isDigit(ch)) { // read digit to number
+                if (sb == null) {
+                    sb = new StringBuilder();
+                }
+                sb.append((char) ch);
+            } else { // any separator (not digit and not parenthesis)
+                if (sb != null) {
+                    final String str = sb.toString();
+                    if (!str.isBlank()) {
+                        Integer i = Integer.parseInt(str);
+                        currentNode = new Node<>(i);
+                        node.add(currentNode);
+                        sb = new StringBuilder();
+                    }
+                }
+            }
+        }
+
+    }
+
+    /**
+     * Read data from input file and build tree
+     */
+    private Node<Integer> readInput() throws TreeRenderException {
+        Node<Integer> root = new Node<>(null);
+        try {
+            List<String> lines = Files.readAllLines(inputFile.toPath());
+            String text = String.join("", lines);
+            // System.out.println(text);
+            try (StringReader r = new StringReader(text.trim())) {
+                int ch;
+                while (-1 != (ch = r.read())) {
+                    if (ch == '(') {
+                        break;
+                    }
+                }
+                if (ch != -1) {
+                    parse(root, r);
+                }
+            }
+
+        } catch (IOException ex) {
+            throw new TreeRenderException("Input file error", ex);
+        }
+        return root;
+    }
+
+    /**
+     * Draw Node's tree into output file
+     *
+     * @param rootNode root node
+     */
+    private void renderOutput(Node<Integer> rootNode) throws TreeRenderException {
+        try (FileWriter out = new FileWriter(outputFile)) {
+
+            int level = 0;
+            outNode(out, rootNode, level);
+        } catch (IOException ex) {
+            throw new TreeRenderException("Output file error", ex);
+        }
+    }
+
+    /**
+     * Recursive write subnodes
+     *
+     * @param out writer
+     * @param current current node
+     * @param level tree level
+     */
+    private void outNode(FileWriter out, Node<Integer> current, int level) throws IOException {
+        Integer value = current.getValue();
+        if (value != null) {
+            final String line = String.format("%s---+\n", value.toString());
+            System.out.print(line);
+            out.write(line);
+        }
+        for (Node<Integer> n : current) {
+            int l = level + 1;
+            outNode(out, n, l);
+        }
+    }
+
+    /**
+     * REnder input file data into aoutput file as pseudographical reprsentation
+     *
+     * @throws TreeRender.TreeRenderException when render() errors
+     */
+    public void render() throws TreeRenderException {
+        Node<Integer> rootNode = readInput();
+        renderOutput(rootNode);
     }
 
     public static class TreeRenderException extends Exception {
@@ -115,6 +256,12 @@ public class TreeRender {
             System.err.println(String.format("Initialisation error: %s", ex.getMessage()));
             return;
         }
-        renderer.render();
+        try {
+            renderer.render();
+        } catch (TreeRenderException ex) {
+            System.err.println(String.format("Render error: %s", ex.getMessage()));
+        }
+
+        System.out.println("TreeRender done.");
     }
 }
